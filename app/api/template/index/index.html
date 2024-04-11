@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<head>
+    <title>Index</title>
+
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        html {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .red-button {
+            background-color: red;
+            color: white;
+        }
+
+        button {
+            border: none;
+            outline: none;
+            padding: 8px 20px;
+            font-size: 1rem;
+            border-radius: 8.5px;
+        }
+    </style>
+</head>
+<body>
+    <button class="red-button" onclick="onRedButtonClick()">Red Button</button>
+    <span>Click in this button to increase 'index_red_button_click' counter</span>
+
+    <script>
+        function onRedButtonClick() {
+            const baseUrl = window.location.href;
+            const path = 'inc-red-button-counter';
+
+            const url = baseUrl.endsWith('/')
+                ? `${baseUrl}${path}`
+                : `${baseUrl}/${path}`;
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: {}
+            })
+        }
+    </script>
+</body>

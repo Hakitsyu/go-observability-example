@@ -1,9 +1,11 @@
 package handler
 
-import "net/http"
+import (
+	"net/http"
 
-func HelloWorld(writer http.ResponseWriter, request *http.Request) {
-	response := "<h1>Hello World</h1>"
+	"github.com/Hakitsyu/go-observability-example/internal/api"
+)
 
-	writer.Write([]byte(response))
+func HelloWorld(writer *api.ResponseWriter, request *http.Request) {
+	writer.String("<h1>Hello World</h1>")
 }

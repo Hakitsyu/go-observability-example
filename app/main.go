@@ -10,6 +10,7 @@ import (
 
 	"github.com/Hakitsyu/go-observability-example/api/handler"
 	"github.com/Hakitsyu/go-observability-example/api/middleware"
+	"github.com/Hakitsyu/go-observability-example/internal/api"
 	"github.com/Hakitsyu/go-observability-example/internal/telemetry"
 	"github.com/Hakitsyu/go-observability-example/internal/telemetry/prometheus"
 	chi "github.com/go-chi/chi/v5"
@@ -42,7 +43,9 @@ func configureHttp(ctx context.Context) {
 	router.Use(chimiddleware.Logger)
 	router.Use(middleware.ResponseTimeMetric)
 
-	router.Get("/helloWorld", handler.HelloWorld)
+	router.Get("/helloWorld", newDefaultMuxHandler(handler.HelloWorld))
+	router.Get("/", newDefaultMuxHandler(handler.Index))
+	router.Post("/inc-red-button-counter", newDefaultMuxHandler(handler.IncRedButtonCounter))
 
 	prometheus.ConfigureMetricsRoute(router, "/metrics")
 
@@ -58,4 +61,10 @@ func configureHttp(ctx context.Context) {
 	}
 
 	app.ListenAndServe()
+}
+
+func newDefaultMuxHandler(handler func(writer *api.ResponseWriter, request *http.Request)) http.HandlerFunc {
+	return func(w http.ResponseWriter, request *http.Request) {
+		handler(api.NewResponseWriter(w), request)
+	}
 }
