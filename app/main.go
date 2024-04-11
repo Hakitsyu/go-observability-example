@@ -1,21 +1,28 @@
 package main
 
 import (
+	"context"
 	"log"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 
 	"github.com/Hakitsyu/go-observability-example/api/handler"
 	"github.com/Hakitsyu/go-observability-example/api/middleware"
+	"github.com/Hakitsyu/go-observability-example/internal/telemetry"
+	"github.com/Hakitsyu/go-observability-example/internal/telemetry/prometheus"
 	chi "github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
+	ctx := context.Background()
+
 	configureLogger()
-	configureHttp()
+
+	telemetry.ConfigureTelemetry(func(err error) { log.Fatal(err) })
+	configureHttp(ctx)
 }
 
 func configureLogger() {
@@ -29,19 +36,26 @@ func configureMiddlewareLogger() {
 	chimiddleware.DefaultLogger = chimiddleware.RequestLogger(&chimiddleware.DefaultLogFormatter{Logger: log.Default(), NoColor: true})
 }
 
-func configureHttp() {
+func configureHttp(ctx context.Context) {
 	router := chi.NewRouter()
 	router.Use(chimiddleware.RequestID)
 	router.Use(chimiddleware.Logger)
 	router.Use(middleware.ResponseTimeMetric)
 
 	router.Get("/helloWorld", handler.HelloWorld)
-	router.Handle("/metrics", promhttp.Handler())
+
+	prometheus.ConfigureMetricsRoute(router, "/metrics")
 
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	http.ListenAndServe(":"+port, router)
+	app := &http.Server{
+		Addr:        ":" + port,
+		BaseContext: func(l net.Listener) context.Context { return ctx },
+		Handler:     router,
+	}
+
+	app.ListenAndServe()
 }

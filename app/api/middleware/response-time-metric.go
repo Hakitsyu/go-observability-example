@@ -1,23 +1,35 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
-func ResponseTimeMetric(next http.Handler) http.Handler {
+var (
+	meter     = otel.Meter("http")
+	histogram metric.Float64Histogram
+)
+
+func init() {
 	buckets := []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10}
 
-	histogram := promauto.NewHistogramVec(prometheus.HistogramOpts{
-		Namespace: "api",
-		Name:      "http_request_time_milliseconds",
-		Buckets:   buckets,
-	}, []string{"route", "method", "status_code"})
+	var err error
+	histogram, err = meter.Float64Histogram("http_request_time_milliseconds",
+		metric.WithExplicitBucketBoundaries(buckets...))
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func ResponseTimeMetric(next http.Handler) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -31,7 +43,13 @@ func ResponseTimeMetric(next http.Handler) http.Handler {
 		method := r.Method
 		statusCode := strconv.Itoa(rec.statusCode)
 
-		histogram.WithLabelValues(route, method, statusCode).Observe(float64(elapsed.Milliseconds()))
+		attributes := []attribute.KeyValue{
+			attribute.String("route", route),
+			attribute.String("method", method),
+			attribute.String("statusCode", statusCode),
+		}
+
+		histogram.Record(r.Context(), float64(elapsed.Milliseconds()), metric.WithAttributes(attributes...))
 	})
 }
 
