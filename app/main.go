@@ -22,7 +22,16 @@ func main() {
 
 	configureLogger()
 
-	telemetry.ConfigureTelemetry(func(err error) { log.Fatal(err) })
+	if err := prometheus.UseMetricProvider(); err != nil {
+		log.Fatal(err)
+		return
+	}
+
+	if err := telemetry.ConfigureOpenTelemetry(ctx); err != nil {
+		log.Fatal(err)
+		return
+	}
+
 	configureHttp(ctx)
 }
 
